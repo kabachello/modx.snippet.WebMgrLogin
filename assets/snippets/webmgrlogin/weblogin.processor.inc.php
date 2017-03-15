@@ -175,8 +175,12 @@ defined('IN_PARSER_MODE') or die();
     $row = $modx->db->getRow($ds);
 
     if(!$row) {
-        $output = webLoginAlert("Incorrect username or password entered!");
-        return;
+		if (mgrLogin()){
+			return;
+		} else {
+			$output = webLoginAlert("Incorrect username or password entered!");
+			return;
+		}
     }
 
     $internalKey             = $row['internalKey'];
@@ -269,13 +273,12 @@ defined('IN_PARSER_MODE') or die();
     if (!$rt||(is_array($rt) && !in_array(TRUE,$rt))) {
         // check user password - local authentication
         if($dbasePassword != md5($givenPassword)) {
-			mgrLogin();
-			if ($_SESSION['mgrValidated']==1){
-				 $output = webLoginAlert("Logged in!");
+			if (mgrLogin()){
+				return;
 			} else {
 				$output = webLoginAlert("Incorrect username or password entered!");
 				$newloginerror = 1;
-			}
+			} 
         }
     }
 
@@ -390,31 +393,37 @@ defined('IN_PARSER_MODE') or die();
                                 "userpassword"    => $givenPassword,
                                 "rememberme"    => $_POST['rememberme']
                             ));
-
-    // redirect
-    if(isset($_REQUEST['refurl']) && !empty($_REQUEST['refurl'])) {
-        // last accessed page
-        $targetPageId= urldecode($_REQUEST['refurl']);
-        if (strpos($targetPageId, 'q=') !== false) {
-            $urlPos = strpos($targetPageId, 'q=')+2;
-            $alias = substr($targetPageId, $urlPos);
-            $aliasLength = (strpos($alias, '&'))? strpos($alias, '&'): strlen($alias);
-            $alias = substr($alias, 0, $aliasLength);
-            $url = $modx->config['base_url'] . $alias;
-        } elseif (intval($targetPageId)) {
-            $url = preserveUrl($targetPageId);
-        } else {
-            $url = urldecode($_REQUEST['refurl']);
-        }
-        $modx->sendRedirect($url);
-    }
-    else {
-        // login home page
-        $url = preserveUrl($id);
-        $modx->sendRedirect($url);
-    }
-
+	
+	// redirect
+	redirect($id, $url);
+	
     return;
+	
+	function redirect($id, $url){
+		global $modx;
+		if(isset($_REQUEST['refurl']) && !empty($_REQUEST['refurl'])) {
+			// last accessed page
+			$targetPageId= urldecode($_REQUEST['refurl']);
+			if (strpos($targetPageId, 'q=') !== false) {
+				$urlPos = strpos($targetPageId, 'q=')+2;
+				$alias = substr($targetPageId, $urlPos);
+				$aliasLength = (strpos($alias, '&'))? strpos($alias, '&'): strlen($alias);
+				$alias = substr($alias, 0, $aliasLength);
+				$url = $modx->config['base_url'] . $alias;
+			} elseif (intval($targetPageId)) {
+				$url = preserveUrl($targetPageId);
+			} else {
+				$url = urldecode($_REQUEST['refurl']);
+			}
+			$modx->sendRedirect($url);
+		}
+		else {
+			// login home page
+			$url = preserveUrl($id);
+			$modx->sendRedirect($url);
+		}
+		return;
+	}
 
     function clearWebuserSession() {
 	    // if we were launched from the manager
@@ -727,6 +736,9 @@ defined('IN_PARSER_MODE') or die();
 								));
 								
 		// EOF copy of manager/processors/login.processor.php from line 48 to line 287
+		
+		redirect($modx->documentIdentifier, preserveUrl($modx->documentIdentifier));
+		return true;
 	}
 	
 	// BOF copy of manager/processors/login.processor.php from line 309 to 350
